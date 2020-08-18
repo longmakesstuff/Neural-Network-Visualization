@@ -27,5 +27,4 @@ class TwoHalvesDataGenerator(private val size: Int) : DataGenerator{
 
         return Pair(xs.toTypedArray(), ys.toTypedArray())
     }
-
 }

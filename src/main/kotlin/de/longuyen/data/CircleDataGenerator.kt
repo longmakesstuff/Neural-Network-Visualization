@@ -1,5 +1,6 @@
 package de.longuyen.data
 
+import de.longuyen.RADIUS
 import de.longuyen.SIZE
 import java.awt.Point
 import java.util.*
@@ -18,11 +19,11 @@ class CircleDataGenerator(private val size: Int) : DataGenerator {
             val x = random.nextInt(SIZE)
             val y = random.nextInt(SIZE)
             val radius = center.distance(Point(x, y))
-            if(oneCounts < half && radius < 200){
+            if(oneCounts < half && radius < RADIUS){
                 xs.add(intArrayOf(x, y))
                 ys.add(intArrayOf(1))
                 oneCounts += 1
-            }else if(zeroCounts < half && radius > 200){
+            }else if(zeroCounts < half && radius > RADIUS){
                 xs.add(intArrayOf(x, y))
                 ys.add(intArrayOf(0))
                 zeroCounts += 1

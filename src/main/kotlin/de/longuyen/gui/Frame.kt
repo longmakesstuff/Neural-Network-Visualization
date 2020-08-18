@@ -1,8 +1,8 @@
 package de.longuyen.gui
 
-import de.longuyen.ONE_COLOR
-import de.longuyen.SIZE
-import de.longuyen.ZERO_COLOR
+import de.longuyen.*
+import de.longuyen.data.CircleDataGenerator
+import de.longuyen.data.TwoHalvesDataGenerator
 import de.longuyen.neuralnetwork.NeuralNetwork
 import de.longuyen.neuralnetwork.activations.LeakyRelu
 import de.longuyen.neuralnetwork.activations.Sigmoid
@@ -23,6 +23,7 @@ import java.io.File
 import javax.imageio.ImageIO
 import javax.swing.JFrame
 import javax.swing.JPanel
+import kotlin.math.abs
 
 
 fun joinBufferedImage(img1: BufferedImage, img2: BufferedImage): BufferedImage {
@@ -58,14 +59,13 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
             g.drawImage(rightImage, 0, 0, null)
         }
     }
-    private val layers = intArrayOf(2, 20, 20, 20, 15, 1)
     private val neuralNetwork = NeuralNetwork(
-        layers,
+        LAYERS,
         XavierInitializer(),
         LeakyRelu(),
         Sigmoid(),
         CrossEntropy(),
-        MomentumGradientDescent(0.1),
+        MomentumGradientDescent(LEARNING_RATE),
         BinaryAccuracy()
     )
     private val xTest: INDArray
@@ -81,7 +81,7 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
         }
         xTest = Nd4j.createFromArray(xTestArray.toTypedArray()).div(SIZE.toDouble()).transpose()
 
-        setSize(SIZE * 2, SIZE + 25)
+        setSize(SIZE * 2, (SIZE + (SIZE * 0.125)).toInt())
         layout = GridLayout(1, 2)
         add(leftPanel)
         add(rightPanel)
@@ -99,8 +99,10 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
             visualizePrediction()
             visualizeTrainingData()
             visualizeNeuralNetwork()
-            val image = joinBufferedImage(leftImage, rightImage)
-            ImageIO.write(image, "png", File("target/${i}.png"))
+            if(i % SAVE_FREQUENCE == 0) {
+                val image = joinBufferedImage(leftImage, rightImage)
+                ImageIO.write(image, "png", File("target/${i}.png"))
+            }
             i++
         }
     }
@@ -138,21 +140,23 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
     }
 
     private fun visualizeNeuralNetwork(){
-        val offSets = mutableListOf(
-            intArrayOf(30, 300),
-            intArrayOf(200, 20),
-            intArrayOf(370, 20),
-            intArrayOf(540, 20),
-            intArrayOf(710, 200),
-            intArrayOf(880, 500)
-        )
-        val margins = intArrayOf(400, 50, 50, 50, 50, 200)
+        val startX = SIZE / LAYERS.size / 2
+        val xOffset = SIZE / LAYERS.size
+        val offSets = mutableListOf<IntArray>()
+        for(i in LAYERS.indices){
+            val yOffset = SIZE / LAYERS[i] / 2
+            offSets.add(intArrayOf(startX + i * xOffset, yOffset))
+        }
+        val margins = mutableListOf<Int>()
+        for(element in LAYERS){
+            margins.add(SIZE / element)
+        }
         val radius = 10
         val layerCoordinates = mutableListOf<Array<IntArray>>()
 
-        for(layer in layers.indices){
+        for(layer in LAYERS.indices){
             val layerCoordinate = mutableListOf<IntArray>()
-            for(neuron in 0 until layers[layer]){
+            for(neuron in 0 until LAYERS[layer]){
                 val x = offSets[layer][0]
                 val y = offSets[layer][1] + neuron * margins[layer]
                 layerCoordinate.add(intArrayOf(x, y))
@@ -181,8 +185,12 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
                     val currentNeuron = currentLayer[currentNeuronIndex]
                     val nextNeuron = nextLayer[nextNeuronIndex]
                     val weight = weights[layerIndex][nextNeuronIndex][currentNeuronIndex]
-                    leftCanvas2D.stroke = BasicStroke(weight.toFloat())
-                    leftCanvas2D.color = Color(50, 50, 50, 5)
+                    leftCanvas2D.stroke = BasicStroke(abs(weight.toFloat()))
+                    if(weight < 0) {
+                        leftCanvas2D.color = Color(255, 255, 0, 25)
+                    }else{
+                        leftCanvas2D.color = Color(0, 255, 255, 25)
+                    }
                     leftCanvas2D.drawLine(currentNeuron[0], currentNeuron[1], nextNeuron[0], nextNeuron[1])
                 }
             }
