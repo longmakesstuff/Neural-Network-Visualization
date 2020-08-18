@@ -48,6 +48,22 @@ class NeuralNetwork(
      */
     private val hiddenCount = layers.size - 1
 
+    fun minMax(): Pair<Double, Double>{
+        var min = weights["W1"]!!.min().element() as Double
+        var max = weights["W1"]!!.max().element() as Double
+        for (i in 1..hiddenCount) {
+            val cMin = weights["W$i"]!!.min().element() as Double
+            val cMax = weights["W$i"]!!.max().element() as Double
+            if(cMin < min){
+                min = cMin
+            }
+            if(cMax > max){
+                max = cMax
+            }
+        }
+        return Pair(min, max)
+    }
+
     fun toPrimitiveWeights(): MutableList<Array<DoubleArray>>{
         val ret = mutableListOf<Array<DoubleArray>>()
         for (i in 1..hiddenCount) {
@@ -125,7 +141,7 @@ class NeuralNetwork(
      * @param x features
      * return the output of each layer and its corresponding scaled version
      */
-    private fun forward(x: INDArray): MutableMap<String, INDArray> {
+    fun forward(x: INDArray): MutableMap<String, INDArray> {
         val cache = mutableMapOf<String, INDArray>()
 
         // Calculate the output of the first layer manually

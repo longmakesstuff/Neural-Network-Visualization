@@ -1,8 +1,6 @@
 package de.longuyen.gui
 
 import de.longuyen.*
-import de.longuyen.data.CircleDataGenerator
-import de.longuyen.data.TwoHalvesDataGenerator
 import de.longuyen.neuralnetwork.NeuralNetwork
 import de.longuyen.neuralnetwork.activations.LeakyRelu
 import de.longuyen.neuralnetwork.activations.Sigmoid
@@ -24,6 +22,7 @@ import javax.imageio.ImageIO
 import javax.swing.JFrame
 import javax.swing.JPanel
 import kotlin.math.abs
+import kotlin.math.min
 
 
 fun joinBufferedImage(img1: BufferedImage, img2: BufferedImage): BufferedImage {
@@ -39,6 +38,18 @@ fun joinBufferedImage(img1: BufferedImage, img2: BufferedImage): BufferedImage {
     g2.drawImage(img2, null, img1.width, 0)
     g2.dispose()
     return newImage
+}
+
+fun gradientColor(x: Float, minX: Double=0.0, maxX: Double=2.0, from: Color = Color.RED, to: Color = Color.GREEN): Color {
+    val range = maxX - minX
+    val q = min(x.toDouble(), maxX)
+    val p = (q - minX) / range
+
+    val red = (from.red * p + to.red * (1 - p)).toInt()
+    val green = (from.green * p + to.green * (1 - p)).toInt()
+    val blue = (from.blue * p + to.blue * (1 - p)).toInt()
+
+    return Color(red, green, blue)
 }
 
 
@@ -110,9 +121,9 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
     private fun visualizeTrainingData() {
         for (i in xs.indices) {
             if (ys[i][0] == 1) {
-                rightCanvas.color = ONE_COLOR
+                rightCanvas.color = ZEROS_COLOR
             } else {
-                rightCanvas.color = ZERO_COLOR
+                rightCanvas.color = ONES_COLOR
             }
             val x = xs[i][0]
             val y = xs[i][1]
@@ -127,13 +138,8 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
         val prediction = neuralNetwork.inference(xTest).reshape(intArrayOf(SIZE, SIZE)).toDoubleMatrix()
         for (y in prediction.indices) {
             for (x in prediction[y].indices) {
-                if (prediction[y][x] > 0.5) {
-                    val color = Color(100, 178, 255, 255 - ((1.0 - prediction[y][x]) * 255).toInt())
-                    rightImage.setRGB(x, y, color.rgb)
-                } else {
-                    val color = Color(255, 0, 255, 255 - (prediction[y][x] * 255).toInt())
-                    rightImage.setRGB(x, y, color.rgb)
-                }
+                val color = gradientColor(prediction[y][x].toFloat(), minX=0.0, maxX = 1.0, from = ZEROS_COLOR, to = ONES_COLOR)
+                rightImage.setRGB(x, y, color.rgb)
             }
         }
         rightPanel.repaint()
@@ -163,17 +169,7 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
             }
             layerCoordinates.add(layerCoordinate.toTypedArray())
         }
-        for(i in layerCoordinates.indices){
-            for(j in layerCoordinates[i].indices){
-                val x = layerCoordinates[i][j][0]
-                val y = layerCoordinates[i][j][1]
-                leftCanvas.color = Color(255, 0, 0, 125)
-                leftCanvas.fillOval(x - radius, y - radius, radius * 2, radius * 2)
-                leftCanvas.color = Color.LIGHT_GRAY
-                leftCanvas.drawOval(x - radius, y - radius, radius * 2, radius * 2)
-            }
-        }
-
+        val minMax = neuralNetwork.minMax()
         val weights = neuralNetwork.toPrimitiveWeights()
         val leftCanvas2D = leftCanvas as Graphics2D
         val oldStroke = leftCanvas2D.stroke
@@ -186,16 +182,32 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
                     val nextNeuron = nextLayer[nextNeuronIndex]
                     val weight = weights[layerIndex][nextNeuronIndex][currentNeuronIndex]
                     leftCanvas2D.stroke = BasicStroke(abs(weight.toFloat()))
-                    if(weight < 0) {
-                        leftCanvas2D.color = Color(255, 255, 0, 25)
-                    }else{
-                        leftCanvas2D.color = Color(0, 255, 255, 25)
-                    }
+                    leftCanvas2D.color = gradientColor(weight.toFloat(), minX =  minMax.first, maxX = minMax.second)
                     leftCanvas2D.drawLine(currentNeuron[0], currentNeuron[1], nextNeuron[0], nextNeuron[1])
                 }
             }
         }
         leftCanvas2D.stroke = oldStroke
+        leftPanel.repaint()
+
+        val forward = neuralNetwork.forward(xTest)
+        forward["Z0"] = xTest
+        for(i in layerCoordinates.indices){
+            val layerOutput = forward["Z$i"]!!
+            val minLayerOutput = layerOutput.min().element() as Double
+            val maxLayerOutput = layerOutput.max().element() as Double
+            val layerOutputVector = layerOutput.mean(1).toDoubleVector()
+            for(j in layerCoordinates[i].indices){
+                val x = layerCoordinates[i][j][0]
+                val y = layerCoordinates[i][j][1]
+
+                leftCanvas2D.color = gradientColor(layerOutputVector[j].toFloat(), minLayerOutput, maxLayerOutput)
+                leftCanvas2D.fillOval(x - radius, y - radius, radius * 2, radius * 2)
+                leftCanvas2D.color = Color.LIGHT_GRAY
+                leftCanvas2D.drawOval(x - radius, y - radius, radius * 2, radius * 2)
+            }
+        }
+
         leftPanel.repaint()
     }
 }
