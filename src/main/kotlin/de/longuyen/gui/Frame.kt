@@ -13,10 +13,32 @@ import de.longuyen.neuralnetwork.optimizers.MomentumGradientDescent
 import org.nd4j.linalg.api.buffer.DataType
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
-import java.awt.*
+import java.awt.BasicStroke
+import java.awt.Color
+import java.awt.Graphics
+import java.awt.Graphics2D
+import java.awt.GridLayout
 import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
 import javax.swing.JFrame
 import javax.swing.JPanel
+
+
+fun joinBufferedImage(img1: BufferedImage, img2: BufferedImage): BufferedImage {
+    val width = img1.width + img2.width
+    val height = img1.height
+    val newImage = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+    val g2 = newImage.createGraphics()
+    val oldColor = g2.color
+    g2.paint = Color.WHITE
+    g2.fillRect(0, 0, width, height)
+    g2.color = oldColor
+    g2.drawImage(img1, null, 0, 0)
+    g2.drawImage(img2, null, img1.width, 0)
+    g2.dispose()
+    return newImage
+}
 
 
 class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : JFrame("Feedforward neural network's hypothesis space visualization") {
@@ -36,7 +58,7 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
             g.drawImage(rightImage, 0, 0, null)
         }
     }
-    private val layers = intArrayOf(2, 10, 10, 10, 1)
+    private val layers = intArrayOf(2, 20, 20, 20, 15, 1)
     private val neuralNetwork = NeuralNetwork(
         layers,
         XavierInitializer(),
@@ -64,17 +86,22 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
         add(leftPanel)
         add(rightPanel)
 
+        setLocationRelativeTo(null)
         defaultCloseOperation = EXIT_ON_CLOSE
         isVisible = true
     }
 
     fun run() {
+        var i = 0
         while (true) {
-            neuralNetwork.train(xTrain, yTrain, xTrain, yTrain, 10)
+            neuralNetwork.train(xTrain, yTrain, xTrain, yTrain, 1)
 
             visualizePrediction()
             visualizeTrainingData()
             visualizeNeuralNetwork()
+            val image = joinBufferedImage(leftImage, rightImage)
+            ImageIO.write(image, "png", File("target/${i}.png"))
+            i++
         }
     }
 
@@ -112,13 +139,14 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
 
     private fun visualizeNeuralNetwork(){
         val offSets = mutableListOf(
-            intArrayOf(10, 200),
-            intArrayOf(130, 20),
-            intArrayOf(250, 20),
+            intArrayOf(30, 300),
+            intArrayOf(200, 20),
             intArrayOf(370, 20),
-            intArrayOf(490, 250)
+            intArrayOf(540, 20),
+            intArrayOf(710, 200),
+            intArrayOf(880, 500)
         )
-        val margins = intArrayOf(100, 50, 50, 50, 0)
+        val margins = intArrayOf(400, 50, 50, 50, 50, 200)
         val radius = 10
         val layerCoordinates = mutableListOf<Array<IntArray>>()
 
@@ -154,7 +182,7 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
                     val nextNeuron = nextLayer[nextNeuronIndex]
                     val weight = weights[layerIndex][nextNeuronIndex][currentNeuronIndex]
                     leftCanvas2D.stroke = BasicStroke(weight.toFloat())
-                    leftCanvas2D.color = Color(50, 50, 50, 125)
+                    leftCanvas2D.color = Color(50, 50, 50, 5)
                     leftCanvas2D.drawLine(currentNeuron[0], currentNeuron[1], nextNeuron[0], nextNeuron[1])
                 }
             }
