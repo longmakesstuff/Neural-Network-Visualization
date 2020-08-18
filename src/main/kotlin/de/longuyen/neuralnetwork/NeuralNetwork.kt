@@ -6,7 +6,7 @@ import de.longuyen.neuralnetwork.losses.LossFunction
 import de.longuyen.neuralnetwork.metrics.Metric
 import de.longuyen.neuralnetwork.optimizers.Optimizer
 import org.nd4j.linalg.api.ndarray.INDArray
-import org.nd4j.linalg.indexing.NDArrayIndex
+import org.nd4j.linalg.ops.transforms.Transforms
 import java.io.Serializable
 
 
@@ -22,10 +22,19 @@ import java.io.Serializable
  *
  * @param lossFunction Determined how the result of the network should be evaluated against a target.
  */
-class NeuralNetwork(private val layers: IntArray, private val initializer: Initializer, private val hiddenActivation: Activation, private val lastActivation: Activation, private val lossFunction: LossFunction, private val optimizer: Optimizer, private val metric: Metric) : Serializable {
+class NeuralNetwork(
+    private val layers: IntArray,
+    private val initializer: Initializer,
+    private val hiddenActivation: Activation,
+    private val lastActivation: Activation,
+    private val lossFunction: LossFunction,
+    private val optimizer: Optimizer,
+    private val metric: Metric
+) : Serializable {
     companion object {
         private const val serialVersionUID: Long = -4270053884763734247
     }
+
     /*
      * Intern parameters of the network
      */
@@ -36,55 +45,12 @@ class NeuralNetwork(private val layers: IntArray, private val initializer: Initi
      */
     private val hiddenCount = layers.size - 1
 
-
-    /**
-     * Adjusting model's parameters with the given data set.
-     * @param X training features
-     * @param Y training target
-     * @param x validating features
-     * @param y validating target
-     * @param epochs how many epochs should the training take
-     * @param verbose should the model print the current metric?
-     * @param batchSize for faster training
-     * @return history of the training with "val-loss", "train-loss", "val-metric", "train-metric"
-     */
-    fun train(X: INDArray, Y: INDArray, x: INDArray, y: INDArray, epochs: Long, batchSize: Long, verbose: Boolean=true): Map<String, DoubleArray>{
-        val validationLosses = mutableListOf<Double>()
-        val trainingLosses = mutableListOf<Double>()
-        val trainingMetrics = mutableListOf<Double>()
-        val validationMetrics = mutableListOf<Double>()
-
-        for (epoch in 0 until epochs) {
-            // Mini batch training
-            for (i in 0 until X.shape()[0] step batchSize) {
-                val Xi = X.get(NDArrayIndex.interval(0, x.shape()[0]), NDArrayIndex.interval(i, i + batchSize))
-                val Yi = Y.get(NDArrayIndex.interval(0, y.shape()[0]), NDArrayIndex.interval(i, i + batchSize))
-
-                train(Xi, Yi, Xi, Yi, 1, false)
-            }
-
-            // Summarize the epoch
-            if (verbose) {
-                // Calculate losses on training and validating dataset
-                val validationPrediction = inference(x)
-                val trainingPrediction = inference(X)
-                val validationLoss = lossFunction.forward(yTrue = y, yPrediction = validationPrediction)
-                val validationMetric = metric.compute(yTrue = y, yPrediction = validationPrediction)
-                val trainingLoss = lossFunction.forward(yTrue = Y, yPrediction = trainingPrediction)
-                val trainingMetric = metric.compute(yTrue = Y, yPrediction = trainingPrediction)
-                println("Epoch $epoch - Training loss ${(trainingLoss.element() as Double)} - Validation Loss ${(validationLoss.element() as Double)} - Training Metric $trainingMetric - Validation Metric $validationMetric")
-
-                validationLosses.add(validationLoss.element() as Double)
-                trainingLosses.add(trainingLoss.element() as Double)
-                validationMetrics.add(validationMetric)
-                trainingMetrics.add(trainingMetric)
-            }
+    fun toPrimitiveWeights(bias: Double = 2.5): MutableList<Array<DoubleArray>> {
+        val ret = mutableListOf<Array<DoubleArray>>()
+        for (i in 1..hiddenCount) {
+            val weight = weights["W$i"]!!
+            ret.add(weight.add(Transforms.abs(weight.min())).mul(bias).toDoubleMatrix())
         }
-        val ret = mutableMapOf<String, DoubleArray>()
-        ret["val-loss"] = validationLosses.toDoubleArray()
-        ret["train-loss"] = trainingLosses.toDoubleArray()
-        ret["val-metric"] = validationMetrics.toDoubleArray()
-        ret["train-metric"] = trainingMetrics.toDoubleArray()
         return ret
     }
 
@@ -98,7 +64,14 @@ class NeuralNetwork(private val layers: IntArray, private val initializer: Initi
      * @param verbose should the model print the current metric?
      * @return history of the training with "val-loss", "train-loss", "val-metric", "train-metric"
      */
-    fun train(X: INDArray, Y: INDArray, x: INDArray, y: INDArray, epochs: Long, verbose: Boolean=true): Map<String, DoubleArray> {
+    fun train(
+        X: INDArray,
+        Y: INDArray,
+        x: INDArray,
+        y: INDArray,
+        epochs: Long,
+        verbose: Boolean = true
+    ): Map<String, DoubleArray> {
         val validationLosses = mutableListOf<Double>()
         val trainingLosses = mutableListOf<Double>()
         val trainingMetrics = mutableListOf<Double>()
@@ -111,13 +84,13 @@ class NeuralNetwork(private val layers: IntArray, private val initializer: Initi
             // Backward propagation
             backward(X, Y, cache)
 
-            if(verbose) {
+            if (verbose) {
                 // Calculate losses on training and validating dataset
                 val yPrediction = inference(x)
                 val trainingLoss = lossFunction.forward(yTrue = Y, yPrediction = cache["A$hiddenCount"]!!)
                 val validationLoss = lossFunction.forward(yTrue = y, yPrediction = yPrediction)
                 val validationMetric = metric.compute(yTrue = y, yPrediction = yPrediction)
-                val trainingMetric = metric.compute(yTrue = Y, yPrediction =  cache["A$hiddenCount"]!!)
+                val trainingMetric = metric.compute(yTrue = Y, yPrediction = cache["A$hiddenCount"]!!)
                 println("Epoch $epoch - Training loss ${(trainingLoss.element() as Double)} - Validation Loss ${(validationLoss.element() as Double)} - Training Metric $trainingMetric - Validation Metric $validationMetric")
 
                 validationLosses.add(validationLoss.element() as Double)
@@ -163,7 +136,8 @@ class NeuralNetwork(private val layers: IntArray, private val initializer: Initi
         }
 
         // Calculate the output of the last layer manually so I scale the output with another activation function
-        cache["Z${layers.size - 1}"] = (weights["W${layers.size - 1}"]!!.mmul(cache["A${layers.size - 2}"])).add(weights["b${layers.size - 1}"]!!)
+        cache["Z${layers.size - 1}"] =
+            (weights["W${layers.size - 1}"]!!.mmul(cache["A${layers.size - 2}"])).add(weights["b${layers.size - 1}"]!!)
         cache["A${layers.size - 1}"] = lastActivation.forward(cache["Z${layers.size - 1}"]!!)
 
         return cache
@@ -183,8 +157,10 @@ class NeuralNetwork(private val layers: IntArray, private val initializer: Initi
 
         // Calculate the gradients of loss respected to the output and the activated output
         for (i in 1 until hiddenCount) {
-            grads["dA${hiddenCount - i}"] = (weights["W${hiddenCount - i + 1}"]!!.transpose()).mmul(grads["dZ${hiddenCount - i + 1}"]!!)
-            grads["dZ${hiddenCount - i}"] = grads["dA${hiddenCount - i}"]!!.mul(hiddenActivation.backward(cache["Z${hiddenCount - i}"]!!))
+            grads["dA${hiddenCount - i}"] =
+                (weights["W${hiddenCount - i + 1}"]!!.transpose()).mmul(grads["dZ${hiddenCount - i + 1}"]!!)
+            grads["dZ${hiddenCount - i}"] =
+                grads["dA${hiddenCount - i}"]!!.mul(hiddenActivation.backward(cache["Z${hiddenCount - i}"]!!))
         }
 
         // Calculate the gradients of loss respected to weights and biases

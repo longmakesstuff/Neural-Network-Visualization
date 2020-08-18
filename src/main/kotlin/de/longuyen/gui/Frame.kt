@@ -4,9 +4,8 @@ import de.longuyen.ONE_COLOR
 import de.longuyen.SIZE
 import de.longuyen.ZERO_COLOR
 import de.longuyen.neuralnetwork.NeuralNetwork
-import de.longuyen.neuralnetwork.activations.Relu
+import de.longuyen.neuralnetwork.activations.LeakyRelu
 import de.longuyen.neuralnetwork.activations.Sigmoid
-import de.longuyen.neuralnetwork.initializers.HeInitializer
 import de.longuyen.neuralnetwork.initializers.XavierInitializer
 import de.longuyen.neuralnetwork.losses.CrossEntropy
 import de.longuyen.neuralnetwork.metrics.BinaryAccuracy
@@ -14,18 +13,18 @@ import de.longuyen.neuralnetwork.optimizers.MomentumGradientDescent
 import org.nd4j.linalg.api.buffer.DataType
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
-import java.awt.Color
-import java.awt.Graphics
-import java.awt.GridLayout
+import java.awt.*
 import java.awt.image.BufferedImage
 import javax.swing.JFrame
 import javax.swing.JPanel
 
-class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : JFrame() {
+
+class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : JFrame("Feedforward neural network's hypothesis space visualization") {
     private val leftImage = BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB)
     private val rightImage = BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB)
     private val bottomImage = BufferedImage(SIZE * 2, SIZE, BufferedImage.TYPE_INT_ARGB)
     private val rightCanvas = rightImage.graphics
+    private val leftCanvas = leftImage.graphics
     private val leftPanel = object : JPanel() {
         override fun paintComponent(g: Graphics) {
             super.paintComponent(g)
@@ -44,11 +43,11 @@ class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : 
             g.drawImage(bottomImage, 0, 0, null)
         }
     }
-    private val layers = intArrayOf(2, 10, 10, 5, 1)
+    private val layers = intArrayOf(2, 10, 10, 10, 1)
     private val neuralNetwork = NeuralNetwork(
         layers,
         XavierInitializer(),
-        Relu(),
+        LeakyRelu(),
         Sigmoid(),
         CrossEntropy(),
         MomentumGradientDescent(0.1),
@@ -82,10 +81,11 @@ class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : 
 
     fun run() {
         while (true) {
-            neuralNetwork.train(xTrain, yTrain, xTrain, yTrain, 1)
+            neuralNetwork.train(xTrain, yTrain, xTrain, yTrain, 10)
 
             visualizePrediction()
             visualizeTrainingData()
+            visualizeNeuralNetwork()
         }
     }
 
@@ -99,7 +99,7 @@ class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : 
             val x = xs[i][0]
             val y = xs[i][1]
             rightCanvas.fillOval(x - 5, y - 5, 10, 10)
-            rightCanvas.color = Color.BLACK
+            rightCanvas.color = Color.LIGHT_GRAY
             rightCanvas.drawOval(x - 5, y - 5, 10, 10);
         }
         rightPanel.repaint()
@@ -119,5 +119,58 @@ class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : 
             }
         }
         rightPanel.repaint()
+    }
+
+    private fun visualizeNeuralNetwork(){
+        val offSets = mutableListOf(
+            intArrayOf(10, 200),
+            intArrayOf(130, 20),
+            intArrayOf(250, 20),
+            intArrayOf(370, 20),
+            intArrayOf(490, 250)
+        )
+        val margins = intArrayOf(100, 50, 50, 50, 0)
+        val radius = 10
+        val layerCoordinates = mutableListOf<Array<IntArray>>()
+
+        for(layer in layers.indices){
+            val layerCoordinate = mutableListOf<IntArray>()
+            for(neuron in 0 until layers[layer]){
+                val x = offSets[layer][0]
+                val y = offSets[layer][1] + neuron * margins[layer]
+                layerCoordinate.add(intArrayOf(x, y))
+            }
+            layerCoordinates.add(layerCoordinate.toTypedArray())
+        }
+        for(i in layerCoordinates.indices){
+            for(j in layerCoordinates[i].indices){
+                val x = layerCoordinates[i][j][0]
+                val y = layerCoordinates[i][j][1]
+                leftCanvas.color = Color(255, 0, 0, 125)
+                leftCanvas.fillOval(x - radius, y - radius, radius * 2, radius * 2)
+                leftCanvas.color = Color.LIGHT_GRAY
+                leftCanvas.drawOval(x - radius, y - radius, radius * 2, radius * 2)
+            }
+        }
+
+        val weights = neuralNetwork.toPrimitiveWeights()
+        val leftCanvas2D = leftCanvas as Graphics2D
+        val oldStroke = leftCanvas2D.stroke
+        for(layerIndex in 0 until layerCoordinates.size - 1){
+            val currentLayer = layerCoordinates[layerIndex]
+            val nextLayer = layerCoordinates[layerIndex + 1]
+            for(currentNeuronIndex in currentLayer.indices){
+                for(nextNeuronIndex in nextLayer.indices){
+                    val currentNeuron = currentLayer[currentNeuronIndex]
+                    val nextNeuron = nextLayer[nextNeuronIndex]
+                    val weight = weights[layerIndex][nextNeuronIndex][currentNeuronIndex]
+                    leftCanvas2D.stroke = BasicStroke(weight.toFloat())
+                    leftCanvas2D.color = Color(50, 50, 50, 125)
+                    leftCanvas2D.drawLine(currentNeuron[0], currentNeuron[1], nextNeuron[0], nextNeuron[1])
+                }
+            }
+        }
+        leftCanvas2D.stroke = oldStroke
+        leftPanel.repaint()
     }
 }
