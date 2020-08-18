@@ -19,10 +19,9 @@ import javax.swing.JFrame
 import javax.swing.JPanel
 
 
-class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : JFrame("Feedforward neural network's hypothesis space visualization") {
+class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : JFrame("Feedforward neural network's hypothesis space visualization") {
     private val leftImage = BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB)
     private val rightImage = BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB)
-    private val bottomImage = BufferedImage(SIZE * 2, SIZE, BufferedImage.TYPE_INT_ARGB)
     private val rightCanvas = rightImage.graphics
     private val leftCanvas = leftImage.graphics
     private val leftPanel = object : JPanel() {
@@ -37,12 +36,6 @@ class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : 
             g.drawImage(rightImage, 0, 0, null)
         }
     }
-    private val bottomPanel = object : JPanel() {
-        override fun paintComponent(g: Graphics) {
-            super.paintComponent(g)
-            g.drawImage(bottomImage, 0, 0, null)
-        }
-    }
     private val layers = intArrayOf(2, 10, 10, 10, 1)
     private val neuralNetwork = NeuralNetwork(
         layers,
@@ -54,8 +47,8 @@ class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : 
         BinaryAccuracy()
     )
     private val xTest: INDArray
-    private val xTrain = Nd4j.createFromArray(xs).castTo(DataType.DOUBLE).div(SIZE.toDouble()).transpose()
-    private val yTrain = Nd4j.createFromArray(ys).castTo(DataType.DOUBLE).transpose()
+    private var xTrain = Nd4j.createFromArray(xs).castTo(DataType.DOUBLE).div(SIZE.toDouble()).transpose()
+    private var yTrain = Nd4j.createFromArray(ys).castTo(DataType.DOUBLE).transpose()
 
     init {
         val xTestArray = mutableListOf<DoubleArray>()
@@ -66,14 +59,10 @@ class Frame(private val xs: Array<IntArray>, private val ys: Array<IntArray>) : 
         }
         xTest = Nd4j.createFromArray(xTestArray.toTypedArray()).div(SIZE.toDouble()).transpose()
 
-        setSize(SIZE * 2, SIZE * 2)
-        layout = GridLayout(2, 1)
-        val compositedImage = JPanel()
-        compositedImage.layout = GridLayout(1, 2)
-        compositedImage.add(leftPanel)
-        compositedImage.add(rightPanel)
-        add(compositedImage)
-        add(bottomPanel)
+        setSize(SIZE * 2, SIZE + 25)
+        layout = GridLayout(1, 2)
+        add(leftPanel)
+        add(rightPanel)
 
         defaultCloseOperation = EXIT_ON_CLOSE
         isVisible = true
