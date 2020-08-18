@@ -11,11 +11,7 @@ import de.longuyen.neuralnetwork.optimizers.MomentumGradientDescent
 import org.nd4j.linalg.api.buffer.DataType
 import org.nd4j.linalg.api.ndarray.INDArray
 import org.nd4j.linalg.factory.Nd4j
-import java.awt.BasicStroke
-import java.awt.Color
-import java.awt.Graphics
-import java.awt.Graphics2D
-import java.awt.GridLayout
+import java.awt.*
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
@@ -40,7 +36,7 @@ fun joinBufferedImage(img1: BufferedImage, img2: BufferedImage): BufferedImage {
     return newImage
 }
 
-fun gradientColor(x: Float, minX: Double=0.0, maxX: Double=2.0, from: Color = Color.RED, to: Color = Color.GREEN): Color {
+fun gradientColor(x: Float, minX: Double = 0.0, maxX: Double = 2.0, from: Color = ZEROS_COLOR, to: Color = ONES_COLOR): Color {
     val range = maxX - minX
     val q = min(x.toDouble(), maxX)
     val p = (q - minX) / range
@@ -49,7 +45,7 @@ fun gradientColor(x: Float, minX: Double=0.0, maxX: Double=2.0, from: Color = Co
     val green = (from.green * p + to.green * (1 - p)).toInt()
     val blue = (from.blue * p + to.blue * (1 - p)).toInt()
 
-    return Color(red, green, blue)
+    return Color(red, green, blue, 125)
 }
 
 
@@ -138,8 +134,13 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
         val prediction = neuralNetwork.inference(xTest).reshape(intArrayOf(SIZE, SIZE)).toDoubleMatrix()
         for (y in prediction.indices) {
             for (x in prediction[y].indices) {
-                val color = gradientColor(prediction[y][x].toFloat(), minX=0.0, maxX = 1.0, from = ZEROS_COLOR, to = ONES_COLOR)
-                rightImage.setRGB(x, y, color.rgb)
+                if (prediction[y][x] > 0.5) {
+                    val color = Color(100, 178, 255, 255 - ((1.0 - prediction[y][x]) * 255).toInt())
+                    rightImage.setRGB(x, y, color.rgb)
+                } else {
+                    val color = Color(255, 0, 255, 255 - (prediction[y][x] * 255).toInt())
+                    rightImage.setRGB(x, y, color.rgb)
+                }
             }
         }
         rightPanel.repaint()
@@ -181,8 +182,8 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
                     val currentNeuron = currentLayer[currentNeuronIndex]
                     val nextNeuron = nextLayer[nextNeuronIndex]
                     val weight = weights[layerIndex][nextNeuronIndex][currentNeuronIndex]
-                    leftCanvas2D.stroke = BasicStroke(abs(weight.toFloat()))
-                    leftCanvas2D.color = gradientColor(weight.toFloat(), minX =  minMax.first, maxX = minMax.second)
+                    leftCanvas2D.stroke = BasicStroke(abs(weight.toFloat()) * 3)
+                    leftCanvas2D.color = gradientColor(weight.toFloat(), minX = minMax.first, maxX = minMax.second)
                     leftCanvas2D.drawLine(currentNeuron[0], currentNeuron[1], nextNeuron[0], nextNeuron[1])
                 }
             }
@@ -203,10 +204,23 @@ class Frame(private var xs: Array<IntArray>, private var ys: Array<IntArray>) : 
 
                 leftCanvas2D.color = gradientColor(layerOutputVector[j].toFloat(), minLayerOutput, maxLayerOutput)
                 leftCanvas2D.fillOval(x - radius, y - radius, radius * 2, radius * 2)
-                leftCanvas2D.color = Color.LIGHT_GRAY
                 leftCanvas2D.drawOval(x - radius, y - radius, radius * 2, radius * 2)
             }
         }
+        val titleFont = Font("SansSerif", Font.BOLD, 10)
+        leftCanvas2D.font = titleFont
+        val x1 = layerCoordinates.first()[0][0]
+        val y1 = layerCoordinates.first()[0][1]
+        leftCanvas2D.color = Color.BLACK
+        leftCanvas2D.drawString("X", x1 - 20, y1 + 3)
+        val x2 = layerCoordinates.first()[1][0]
+        val y2 = layerCoordinates.first()[1][1]
+        leftCanvas2D.color = Color.BLACK
+        leftCanvas2D.drawString("Y", x2 - 20, y2 + 3)
+        val x3 = layerCoordinates.last()[0][0]
+        val y3 = layerCoordinates.last()[0][1]
+        leftCanvas2D.color = Color.BLACK
+        leftCanvas2D.drawString("Out", x3 + 12, y3 + 3)
 
         leftPanel.repaint()
     }
