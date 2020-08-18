@@ -22,11 +22,11 @@ class MomentumGradientDescent(private val learningRate: Double, private val mome
         for(i in 2 until layers){
             velocity["vW$i"] = velocity["vW$i"]!!.mul(momentum)
             velocity["vW$i"] = gradients["dW$i"]!!.mul(learningRate)
-            weights["W$i"] = weights["W$i"]!!.sub(velocity["vW$i"])
+            weights["W$i"] = weights["W$i"]!!.add(velocity["vW$i"])
 
             velocity["vb$i"] = velocity["vb$i"]!!.mul(momentum)
             velocity["vb$i"] = gradients["db$i"]!!.mul(learningRate)
-            weights["b$i"] = weights["b$i"]!!.sub(velocity["vb$i"])
+            weights["b$i"] = weights["b$i"]!!.add(velocity["vb$i"])
         }
     }
 
