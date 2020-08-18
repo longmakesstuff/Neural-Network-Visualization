@@ -1,8 +1,0 @@
-language: java
-jdk:
-  - openjdk11
-script:
-  - unzip data/fashion/fashion.zip -d data/fashion
-  - unzip data/houseprice/houseprice.zip -d data/houseprice
-  - unzip data/mnist/mnist.zip -d data/mnist
-  - mvn clean test

@@ -8,7 +8,7 @@
     <artifactId>neuronal-network-kotlin</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>de.longuyen neuronal-network-regression</name>
+    <name>Feedforward network's hypothesis space</name>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
