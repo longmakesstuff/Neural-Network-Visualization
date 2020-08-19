@@ -12,14 +12,18 @@ The visualization of this project shall enable some insights into the structure 
 
 The implementation was done in pure Kotlin. The linear algebra works got help by `Nd4j`.
 
-### Simple training data with less complex topology
+The training data will be splitted into two parts. The left top part of the input space will be blue and the right bottom part of the input space will be pink. From the whole input space random data points will be sampled and fed into the neural network. After each training epoch the neural network's prediction on the whole space will visualized. 
+
+### Results
+
+###### Simple training data with less complex topology
 
 ![](result/001.gif)
 
-### Advanced training data with no possible way to draw a dividing line between two classes
+###### Advanced training data with no possible way to draw a dividing line between two classes
 
 ![](result/002.gif)
 
-### Another non-trivial training data set
+###### Another non-trivial training data set
 
 ![](result/003.gif)
