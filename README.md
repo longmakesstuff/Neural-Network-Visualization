@@ -27,3 +27,6 @@ The training data will be splitted into two parts. The left top part of the inpu
 ###### Another non-trivial training data set
 
 ![](result/003.gif)
+
+### References
+- [Deep learning book](https://www.deeplearningbook.org/)
